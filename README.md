@@ -51,19 +51,31 @@ El índice del DataFrame se cambió a `DateTime` para facilitar operaciones temp
 
 #### Observaciones Clave sobre Distribuciones
 
-Los datos son de naturaleza **log-normal** (variables físicas), presentando sesgo significativo. A continuación, se muestran dos ejemplos representativos:
+Las variables físicas presentan dos tipos de distribuciones:
+
+**Distribución Log-Normal (sesgo positivo, cola derecha):**
+- Contaminantes gaseosos: `CO(GT)`, `NOx(GT)`, `C6H6(GT)` (Benceno)
+- Sensores correspondientes: `PT08.S1(CO)`, `PT08.S3(NOx)`, `PT08.S2(NMHC)`, `PT08.S5(O3)`
+- **Característica:** Valores concentrados cerca de cero con cola larga hacia valores altos
+
+**Distribución Normal (Gaussiana, simétrica):**
+- Variables ambientales: `T` (Temperatura), `RH` (Humedad Relativa), `AH` (Humedad Absoluta)
+- Contaminante reactivo: `NO2(GT)` y sensor `PT08.S4(NO2)`
+- **Característica:** Distribución simétrica alrededor de la media
+
+A continuación, ejemplos representativos de **distribuciones log-normales**:
 
 **Histograma CO(GT) - Sesgo positivo característico:**
-![Histograma CO(GT)](Data/raw/missing_data/distribuciones/hist_CO(GT).png)
+![Histograma CO(GT)](Data/raw/missing_data/distribuciones/hist_CO%28GT%29.png)
 
 **Boxplot NOx(GT) - Presencia de outliers por cola derecha:**
-![Boxplot NOx(GT)](Data/raw/missing_data/distribuciones/box_NOx(GT).png)
+![Boxplot NOx(GT)](Data/raw/missing_data/distribuciones/box_NOx%28GT%29.png)
 
 **Histograma NO2(GT) - Distribución log-normal:**
-![Histograma NO2(GT)](Data/raw/missing_data/distribuciones/hist_NO2(GT).png)
+![Histograma NO2(GT)](Data/raw/missing_data/distribuciones/hist_NO2%28GT%29.png)
 
 **Boxplot PT08.S1(CO) - Estructura típica de datos log-normales:**
-![Boxplot PT08.S1(CO)](Data/raw/missing_data/distribuciones/box_PT08.S1(CO).png)
+![Boxplot PT08.S1(CO)](Data/raw/missing_data/distribuciones/box_PT08.S1%28CO%29.png)
 
 ### 4. Tratamiento de Valores Perdidos
 Se aplicó **interpolación temporal** aprovechando la estructura de series temporales:
@@ -84,6 +96,7 @@ Pasos:
 #### Nota sobre NMHC(GT) y PT08.S4(NO2)
 - **NMHC(GT)** fue excluido por tener **90.23% de datos perdidos**, haciéndolo inviable incluso con imputación.
 - **PT08.S4(NO2)** exhibe **alta sensibilidad** a variaciones ambientales, resultando en correlaciones más reactivas.
+- **PT08.S3(NOx)** presenta **alta dispersión** ("nube") en scatter plots debido a variables confusoras (temperatura, humedad); no es un error de medición sino una característica que requiere **calibración multivariable** en aplicaciones reales.
 - Para análisis de **hidrocarburos no metálicos**, se utilizó **C6H6(GT) (Benceno)** como proxy, ya que es el hidrocarburo no metálico más similar disponible en el dataset.
 
 #### Matriz de Correlación - Variables Físicas
@@ -93,16 +106,16 @@ Pasos:
 #### Relaciones Sensor-Referencia (Pares Pareados)
 
 **Monóxido de Carbono (CO):**
-![CO(GT) vs PT08.S1(CO)](Data/raw/figures/correlaciones_pares/scatter_COGT_vs_PT08.S1CO.png)
+![CO(GT) vs PT08.S1(CO)](Data/raw/figures/correlaciones_pares/scatter_COGT_vs_PT08S1CO.png)
 
 **Hidrocarburos No Metálicos (Benceno):**
-![C6H6(GT) vs PT08.S2(NMHC)](Data/raw/figures/correlaciones_pares/scatter_C6H6GT_vs_PT08.S2NMHC.png)
+![C6H6(GT) vs PT08.S2(NMHC)](Data/raw/figures/correlaciones_pares/scatter_C6H6GT_vs_PT08S2NMHC.png)
 
 **Óxidos de Nitrógeno (NOx):**
-![NOx(GT) vs PT08.S3(NOx)](Data/raw/figures/correlaciones_pares/scatter_NoxGT_vs_PT08.S3NOx.png)
+![NOx(GT) vs PT08.S3(NOx)](Data/raw/figures/correlaciones_pares/scatter_NOxGT_vs_PT08S3NOx.png)
 
 **Dióxido de Nitrógeno (NO2):**
-![NO2(GT) vs PT08.S4(NO2)](Data/raw/figures/correlaciones_pares/scatter_NO2GT_vs_PT08.S4NO2.png)
+![NO2(GT) vs PT08.S4(NO2)](Data/raw/figures/correlaciones_pares/scatter_NO2GT_vs_PT08S4NO2.png)
 
 ## Salida
 - **Dataset procesado:** `Data/processed/air_quality_UCI_cleaned.csv`
