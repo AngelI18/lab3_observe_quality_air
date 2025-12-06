@@ -1,5 +1,24 @@
 # Laboratorio 3: Observación de Calidad del Aire
 
+## Requisitos del Sistema
+
+### Librerías Necesarias
+
+El proyecto utiliza las siguientes librerías de Python:
+
+#### Core Data Processing
+- **pandas** (>=2.0.0) - Manipulación y análisis de datos
+- **numpy** (>=1.24.0) - Operaciones numéricas y arrays
+
+#### Visualización
+- **matplotlib** (>=3.7.0) - Gráficos estáticos
+- **seaborn** (>=0.13.0) - Visualizaciones estadísticas
+- **plotly** (>=5.0.0) - Gráficos interactivos
+
+#### Dashboard Web
+- **streamlit** (>=1.28.0) - Aplicación web interactiva
+
+
 ## Descripción del Proyecto
 Análisis exploratorio y limpieza de datos de calidad del aire del dataset UCI Air Quality. El objetivo es procesar datos con valores perdidos utilizando técnicas de interpolación temporal, considerando la naturaleza física (log-normal) de las variables.
 
@@ -119,7 +138,7 @@ Pasos:
 
 ## Salida
 - **Dataset procesado:** `Data/processed/air_quality_UCI_cleaned.csv`
-- **Porcentajes de missing values:** `Data/raw/missing_data/missing_percentages.csv`
+- **Porcentajes de missing values:** `Data/processed/missing_percentages.csv`
 - **Visualizaciones:**
   - Distribuciones: `Data/raw/missing_data/distribuciones/`
   - Correlaciones: `Data/raw/figures/`
