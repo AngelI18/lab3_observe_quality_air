@@ -49,7 +49,14 @@ if st.sidebar.button("🔄 Recargar Datos"):
 
 st.title("Dashboard de Calidad del Aire")
 
-tab1, tab2, tab3 = st.tabs(["Distribuciones y Outliers", "Análisis de Correlación", "Comparativa Raw vs Clean"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "Distribuciones y Outliers", 
+    "Análisis de Correlación", 
+    "Comparativa Raw vs Clean",
+    "Modelamiento I",
+    "Modelamiento II",
+    "Reporte Final"
+])
 
 # ============ TAB 1: DISTRIBUCIONES Y OUTLIERS ============
 with tab1:
@@ -175,3 +182,81 @@ with tab3:
             st.dataframe(df_missings, use_container_width=True)
     else:
         st.warning("No se encontraron los datos necesarios para la comparación.")
+
+
+# ============ TAB 4: MODELAMIENTO I ============
+with tab4:
+    st.header("Modelamiento I – Ajuste de Sensores MOX a Concentraciones Reales")
+
+    st.markdown("""
+    Aquí se calibran los sensores MOX comparando su señal eléctrica con las mediciones reales (GT).
+    Se muestran los modelos univariables y el modelo multivariable.
+    """)
+
+    sensores = [
+        ("PT08.S1(CO)", "CO(GT)"),
+        ("PT08.S3(NOx)", "NOx(GT)"),
+        ("PT08.S4(NO2)", "NO2(GT)")
+    ]
+
+    for sensor, gt in sensores:
+        st.subheader(f"{sensor} → {gt}")
+
+        fig = PlotFactory.create_regression_plot(df_completo, sensor, gt)
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("Modelo Multivariable: CO(GT) ~ Sensores + Ambiente")
+    fig_mv = PlotFactory.create_multivariable_regression_plot(
+    df_completo,
+    target="CO(GT)",
+    predictors=["PT08.S1(CO)", "T", "RH", "AH"]
+    )
+    st.plotly_chart(fig_mv, use_container_width=True)
+
+
+# ============ TAB 5: DRIFT ============
+with tab5:
+    st.header("Modelamiento II – Análisis de Drift del Sensor")
+
+    st.markdown("""
+    El drift corresponde a la variación en el comportamiento del sensor a lo largo del tiempo.
+    Aquí se ajusta un modelo por mes y se observa cómo cambia la pendiente.
+    """)
+
+    fig_drift = PlotFactory.create_drift_plot(df_completo, "PT08.S1(CO)", "CO(GT)")
+    st.plotly_chart(fig_drift, use_container_width=True)
+
+
+# ============ TAB 6: REPORTE FINAL ============
+with tab6:
+    st.header("Reporte Final – Clasificación de la Calidad del Aire")
+
+    st.markdown("""
+    Se clasifica el aire según CO(GT):
+    - < 1 mg/m³ → Buena  
+    - 1 a 3 mg/m³ → Regular  
+    - > 3 mg/m³ → Mala  
+    """)
+
+    df_rep = df_completo.copy()
+    bins = [-1, 1, 3, 50]
+    labels = ["Buena", "Regular", "Mala"]
+    df_rep["Calidad"] = pd.cut(df_rep["CO(GT)"], bins=bins, labels=labels)
+
+    opcion = st.selectbox("Filtrar por categoría:", ["Todas"] + labels)
+
+    if opcion != "Todas":
+        df_plot = df_rep[df_rep["Calidad"] == opcion]
+    else:
+        df_plot = df_rep
+
+    fig = go.Figure()
+    for label in labels:
+        subset = df_plot[df_plot["Calidad"] == label]
+        fig.add_trace(go.Scatter(
+            x=subset.index, y=subset["CO(GT)"],
+            mode="markers", name=label
+        ))
+
+    fig.update_layout(title="Calidad del aire según CO(GT)", xaxis_title="Tiempo", yaxis_title="CO(GT)")
+    st.plotly_chart(fig, use_container_width=True)

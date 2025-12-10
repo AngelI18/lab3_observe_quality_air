@@ -3,6 +3,7 @@ Abstracción de visualizaciones desacoplada.
 Sigue los principios SOLID: cada tipo de visualización es independiente y modificable.
 """
 from abc import ABC, abstractmethod
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from typing import Optional, List, Dict, Any, Union
@@ -191,3 +192,128 @@ class PlotFactory:
     def create_imputation_comparison_builder(df_clean: pd.DataFrame, df_raw: pd.DataFrame, 
                                              config: ImputationComparisonConfig) -> ImputationComparisonBuilder:
         return ImputationComparisonBuilder(df_clean, df_raw, config)
+
+    @staticmethod
+    def create_regression_plot(df, sensor, gt):
+        return RegressionBuilder(df, sensor, gt).build()
+
+    @staticmethod
+    def create_multivariable_regression_plot(df, target, predictors):
+        return MultivariableRegressionBuilder(df, target, predictors).build()
+
+    @staticmethod
+    def create_drift_plot(df, sensor, gt):
+        return DriftBuilder(df, sensor, gt).build()
+
+
+class RegressionBuilder(PlotBuilder):
+    """Regresión univariable lineal para Modelamiento I."""
+    
+    def __init__(self, df: pd.DataFrame, sensor: str, gt: str):
+        self.df = df
+        self.sensor = sensor
+        self.gt = gt
+    
+    def build(self) -> go.Figure:
+        import numpy as np
+        
+        data = self.df[[self.sensor, self.gt]].dropna()
+        x = data[self.sensor].to_numpy()
+        y = data[self.gt].to_numpy()
+
+        # Ajuste lineal
+        a, b = np.polyfit(x, y, 1)
+        y_pred = a * x + b
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=x, y=y, mode='markers', name='Datos', opacity=0.6
+        ))
+        xx = np.linspace(x.min(), x.max(), 200)
+        fig.add_trace(go.Scatter(
+            x=xx, y=a*xx + b, mode='lines', name='Ajuste lineal', line=dict(color='red')
+        ))
+
+        fig.update_layout(
+            title=f"{self.sensor} → {self.gt} (Modelo lineal)",
+            xaxis_title=self.sensor,
+            yaxis_title=self.gt
+        )
+        return fig
+
+
+class MultivariableRegressionBuilder(PlotBuilder):
+    """Regresión multivariable lineal para CO(GT)."""
+    
+    def __init__(self, df: pd.DataFrame, target: str, predictors: list):
+        self.df = df
+        self.target = target
+        self.predictors = predictors
+    
+    def build(self):
+        import numpy as np
+        
+        df_mv = self.df[self.predictors + [self.target]].dropna()
+        X = df_mv[self.predictors].to_numpy()
+        X_design = np.hstack([X, np.ones((X.shape[0], 1))])
+        y = df_mv[self.target].to_numpy()
+
+        coeffs, *_ = np.linalg.lstsq(X_design, y, rcond=None)
+        y_pred = X_design @ coeffs
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=y, y=y_pred, mode="markers", opacity=0.6,
+            name="Observado vs Predicho"
+        ))
+
+        minv, maxv = min(y.min(), y_pred.min()), max(y.max(), y_pred.max())
+        fig.add_trace(go.Scatter(
+            x=[minv, maxv], y=[minv, maxv],
+            mode="lines", name="Línea ideal", line=dict(color="red")
+        ))
+
+        fig.update_layout(
+            title=f"Modelo Multivariable: {self.target}",
+            xaxis_title="Observado",
+            yaxis_title="Predicho"
+        )
+        return fig
+
+class DriftBuilder(PlotBuilder):
+    """Análisis del cambio de pendiente en el tiempo."""
+    
+    def __init__(self, df: pd.DataFrame, sensor: str, gt: str):
+        self.df = df
+        self.sensor = sensor
+        self.gt = gt
+    
+    def build(self):
+        import numpy as np
+        
+        df_temp = self.df[[self.sensor, self.gt]].dropna().resample("ME")
+        slopes, dates = [], []
+
+        for period, grp in df_temp:
+            if len(grp) < 20:
+                continue
+
+            x = grp[self.sensor].to_numpy()
+            y = grp[self.gt].to_numpy()
+            
+            a, b = np.polyfit(x, y, 1)
+            slopes.append(a)
+            dates.append(period)
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=dates, y=slopes, mode="lines+markers",
+            name="Pendiente mensual"
+        ))
+
+        fig.update_layout(
+            title=f"Drift del sensor {self.sensor}",
+            xaxis_title="Fecha",
+            yaxis_title="Pendiente"
+        )
+        return fig
