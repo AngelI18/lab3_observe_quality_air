@@ -36,8 +36,16 @@ tab_config = TabConfig()
 
 # Filtrar columnas según configuración para tabs 1 y 2
 df = dataset_config.filter_columns(df_completo)
+
+# Filtrar columnas sin nombre o vacías
+df = df.loc[:, ~df.columns.str.contains('^Unnamed', na=False)]
+df = df.loc[:, df.columns.str.strip() != '']
+
 if df_raw is not None:
     df_raw = dataset_config.filter_columns_raw(df_raw)
+    # Filtrar columnas sin nombre en raw también
+    df_raw = df_raw.loc[:, ~df_raw.columns.str.contains('^Unnamed', na=False)]
+    df_raw = df_raw.loc[:, df_raw.columns.str.strip() != '']
 
 st.sidebar.title("Panel de Control")
 st.sidebar.info("Ajusta los parámetros de visualización.")
@@ -126,17 +134,20 @@ with tab2:
     
     tab_config.update_scatter(alpha=alpha_val, size=size_val)
     
-    st.markdown(f"**Visualización:** `{x_axis}` vs `{y_axis}`")
-    
-    scatter_builder = PlotFactory.create_scatter_builder(df, tab_config.get_scatter_config())
-    fig_scatter = scatter_builder.build(x_axis, y_axis, color_var)
-    st.plotly_chart(fig_scatter, use_container_width=True)
-    
-    if x_axis != y_axis:
-        corr_val = df[[x_axis, y_axis]].corr().iloc[0, 1]
-        st.metric("Coeficiente de Correlación (Pearson)", f"{corr_val:.4f}")
+    if x_axis and y_axis:
+        st.markdown(f"**Visualización:** `{x_axis}` vs `{y_axis}`")
+        
+        scatter_builder = PlotFactory.create_scatter_builder(df, tab_config.get_scatter_config())
+        fig_scatter = scatter_builder.build(x_axis, y_axis, color_var)
+        st.plotly_chart(fig_scatter, use_container_width=True)
+        
+        if x_axis != y_axis:
+            corr_val = df[[x_axis, y_axis]].corr().iloc[0, 1]
+            st.metric("Coeficiente de Correlación (Pearson)", f"{corr_val:.4f}")
+        else:
+            st.info("Selecciona variables distintas para calcular correlación.")
     else:
-        st.info("Selecciona variables distintas para calcular correlación.")
+        st.warning("⚠️ Selecciona variables para ambos ejes.")
 
     st.divider()
     st.subheader("Heatmap de Correlación")
@@ -157,11 +168,39 @@ with tab3:
     
     if df_raw is not None and df_missings is not None:
         # Diagnóstico de Calidad de Datos
-        st.subheader("📊 Diagnóstico de Calidad de Datos")
+        st.subheader("📊 Diagnóstico de Calidad de Datos (Raw)")
         
         missing_builder = PlotFactory.create_missing_data_builder(df_missings)
         fig_missing = missing_builder.build(umbral_critico=90.0)
         st.plotly_chart(fig_missing, use_container_width=True)
+        
+        st.divider()
+        
+        # Explicación del tratamiento de datos faltantes
+        st.subheader("🔬 Metodología de Imputación: Interpolación Temporal")
+        
+        st.markdown("""
+        ### ¿Por qué no usar media o mediana?
+        
+        Las variables de este dataset son **mediciones físicas de calidad del aire** registradas 
+        **a lo largo del tiempo** (series temporales). Los valores faltantes no deben rellenarse 
+        con estadísticos estáticos como media o mediana porque:
+        
+        - 🌡️ **Continuidad temporal**: La concentración de contaminantes varía gradualmente en el tiempo
+        - 📊 **Dependencia secuencial**: El valor en el momento *t* depende de *t-1* y *t+1*
+        - ⚗️ **Propiedades físicas**: Las variables ambientales siguen patrones de difusión y dispersión
+        
+        ### Método aplicado: Interpolación temporal
+        
+        Se utilizó **interpolación lineal basada en tiempo** (`method='time'`) que:
+        
+        1. **Estima valores intermedios** entre mediciones válidas considerando el intervalo temporal
+        2. **Preserva tendencias** y patrones de variación natural de los contaminantes
+        3. **Respeta la física** del fenómeno (ej: entre CO(GT)=1.2 a las 11:00 y CO(GT)=1.4 a las 13:00, 
+           el valor a las 12:00 será ~1.3, no 2.5 que sería la mediana global)
+        
+        **Resultado**: Dataset limpio con **0% valores faltantes** y coherencia física temporal.
+        """)
         
         st.divider()
         
@@ -177,9 +216,6 @@ with tab3:
         with col2:
             st.metric("Columnas Raw", len(df_raw.columns))
             st.metric("Columnas Clean", len(df_completo.columns))
-        
-        with st.expander("Ver Tabla Completa de Missing Values"):
-            st.dataframe(df_missings, use_container_width=True)
     else:
         st.warning("No se encontraron los datos necesarios para la comparación.")
 

@@ -30,6 +30,18 @@ def plot_missing_bars(missings_df: pd.DataFrame, umbral_critico: float = 90.0):
             df_plot = df_plot.reset_index()
             df_plot.columns = ['Variable', 'Missing Percentage']
     
+    # FILTRAR: Eliminar variables con 100% nulos (son errores de datos)
+    df_plot = df_plot[df_plot['Missing Percentage'] < 100].copy()
+    
+    # FILTRAR: Eliminar variables "Unnamed" (columnas sin nombre)
+    df_plot = df_plot[~df_plot['Variable'].str.contains('^Unnamed', na=False)].copy()
+    
+    # FILTRAR: Eliminar variables vacías
+    df_plot = df_plot[df_plot['Variable'].str.strip() != ''].copy()
+    
+    if df_plot.empty:
+        return go.Figure()
+    
     fig = px.bar(
         df_plot,
         x='Variable',

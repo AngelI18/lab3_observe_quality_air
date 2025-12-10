@@ -22,6 +22,25 @@ def cargar_datos_limpios(filepath: Optional[str] = None) -> Optional[pd.DataFram
     path = Path(filepath) if filepath else CLEANED_DATA_PATH
     try:
         df = pd.read_csv(path, index_col='DateTime', parse_dates=['DateTime'])
+        
+        # Limpieza profunda de datos
+        # 1. Eliminar columnas completamente nulas
+        df = df.dropna(axis=1, how='all')
+        
+        # 2. Eliminar filas completamente nulas
+        df = df.dropna(axis=0, how='all')
+        
+        # 3. Eliminar columnas Unnamed
+        df = df.loc[:, ~df.columns.str.contains('^Unnamed', na=False)]
+        
+        # 4. Eliminar columnas vacías (solo espacios)
+        df = df.loc[:, df.columns.str.strip() != '']
+        
+        # 5. Eliminar columnas con 100% valores faltantes
+        missing_pct = df.isna().sum() / len(df) * 100
+        cols_to_keep = missing_pct[missing_pct < 100].index
+        df = df[cols_to_keep]
+        
         return df
     except FileNotFoundError:
         return None
@@ -31,6 +50,25 @@ def cargar_datos_raw(filepath: Optional[str] = None) -> Optional[pd.DataFrame]:
     path = Path(filepath) if filepath else RAW_DATA_PATH
     try:
         df = pd.read_csv(path, index_col='DateTime', parse_dates=['DateTime'])
+        
+        # Limpieza profunda de datos
+        # 1. Eliminar columnas completamente nulas
+        df = df.dropna(axis=1, how='all')
+        
+        # 2. Eliminar filas completamente nulas
+        df = df.dropna(axis=0, how='all')
+        
+        # 3. Eliminar columnas Unnamed
+        df = df.loc[:, ~df.columns.str.contains('^Unnamed', na=False)]
+        
+        # 4. Eliminar columnas vacías (solo espacios)
+        df = df.loc[:, df.columns.str.strip() != '']
+        
+        # 5. Eliminar columnas con 100% valores faltantes
+        missing_pct = df.isna().sum() / len(df) * 100
+        cols_to_keep = missing_pct[missing_pct < 100].index
+        df = df[cols_to_keep]
+        
         return df
     except FileNotFoundError:
         return None
@@ -39,6 +77,25 @@ def cargar_datos_raw(filepath: Optional[str] = None) -> Optional[pd.DataFrame]:
 def cargar_reporte_missings(filepath: Optional[str] = None) -> Optional[pd.DataFrame]:
     path = Path(filepath) if filepath else MISSING_REPORT_PATH
     try:
-        return pd.read_csv(path)
+        df = pd.read_csv(path)
+        
+        # Limpieza del reporte de missings
+        # 1. Eliminar filas sin nombre de columna
+        if 'Column' in df.columns:
+            df = df[df['Column'].notna()].copy()
+            df = df[~df['Column'].str.contains('^Unnamed', na=False)].copy()
+            df = df[df['Column'].str.strip() != ''].copy()
+        elif 'Variable' in df.columns:
+            df = df[df['Variable'].notna()].copy()
+            df = df[~df['Variable'].str.contains('^Unnamed', na=False)].copy()
+            df = df[df['Variable'].str.strip() != ''].copy()
+        
+        # 2. Eliminar columnas con 100% missing (Raw_Missing_% o Missing Percentage)
+        if 'Raw_Missing_%' in df.columns:
+            df = df[df['Raw_Missing_%'] < 100].copy()
+        elif 'Missing Percentage' in df.columns:
+            df = df[df['Missing Percentage'] < 100].copy()
+        
+        return df
     except FileNotFoundError:
         return None
