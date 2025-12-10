@@ -235,17 +235,19 @@ with tab4:
         ("PT08.S4(NO2)", "NO2(GT)")
     ]
 
+    # Modelos univariables
     for sensor, gt in sensores:
         st.subheader(f"{sensor} → {gt}")
-
         fig = PlotFactory.create_regression_plot(df_completo, sensor, gt)
         st.plotly_chart(fig, use_container_width=True)
+        st.markdown("---")
 
+    # Modelo multivariable
     st.subheader("Modelo Multivariable: CO(GT) ~ Sensores + Ambiente")
     fig_mv = PlotFactory.create_multivariable_regression_plot(
-    df_completo,
-    target="CO(GT)",
-    predictors=["PT08.S1(CO)", "T", "RH", "AH"]
+        df_completo,
+        target="CO(GT)",
+        predictors=["PT08.S1(CO)", "T", "RH", "AH"]
     )
     st.plotly_chart(fig_mv, use_container_width=True)
 
